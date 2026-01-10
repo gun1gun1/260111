@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sophisticated Gradient To-Do</title>
+    <style>
+        /* 1. 기본 설정 및 그라데이션 배경 */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(to right, #667eea, #764ba2);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--primary-gradient);
+            background-size: 200% 200%;
+            animation: gradientAnimation 15s ease infinite; /* 배경이 은은하게 움직임 */
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 2. 메인 컨테이너 (글래스 효과) */
+        .container {
+            background: var(--glass-bg);
+            width: 400px;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* 3. 입력창 디자인 */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            background: var(--secondary-gradient);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* 4. 리스트 아이템 디자인 */
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        li:hover {
+            background-color: #f9f9f9;
+            transform: translateX(5px);
+        }
+
+        /* 체크박스 커스텀 */
+        .custom-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .custom-checkbox::after {
+            content: '✔';
+            color: white;
+            font-size: 12px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.2s;
+        }
+
+        /* 5. 완료 및 삭제 애니메이션 */
+        /* 완료 상태 클래스 */
+        li.completed .custom-checkbox {
+            background: var(--secondary-gradient);
+            border-color: transparent;
+        }
+
+        li.completed .custom-checkbox::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        li.completed span {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* 사라지는 애니메이션 */
+        li.fade-out {
+            opacity: 0;
+            transform: translateX(50px);
+            margin-bottom: -50px; /* 자연스럽게 리스트가 당겨지도록 */
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Today's Focus</h2>
+        <div class="input-group">
+            <input type="text" id="todoInput" placeholder="오늘 할 일을 입력하세요..." onkeypress="if(event.keyCode==13) addTask()">
+            <button onclick="addTask()">Add</button>
+        </div>
+        <ul id="todoList">
+            </ul>
+    </div>
+
+    <script>
+        function addTask() {
+            const input = document.getElementById("todoInput");
+            const taskText = input.value.trim();
+            const list = document.getElementById("todoList");
+
+            // 빈 값 입력 방지
+            if (taskText === "") {
+                alert("할 일을 입력해주세요.");
+                return;
+            }
+
+            // 리스트 아이템 생성
+            const li = document.createElement("li");
+            
+            // HTML 구조: 체크박스 UI + 텍스트
+            li.innerHTML = `
+                <div class="custom-checkbox"></div>
+                <span>${taskText}</span>
+            `;
+
+            // 클릭 이벤트: 완료 처리 -> 삭제
+            li.addEventListener("click", function() {
+                // 이미 완료된 항목이면 중복 실행 방지
+                if (li.classList.contains('completed')) return;
+
+                // 1. 시각적으로 완료 표시 (체크 및 취소선)
+                li.classList.add("completed");
+
+                // 2. 잠시 후 사라지는 애니메이션 실행 (0.6초 뒤)
+                setTimeout(() => {
+                    li.classList.add("fade-out");
+                    
+                    // 3. 애니메이션이 끝난 후 DOM에서 완전히 제거 (0.4초 뒤)
+                    setTimeout(() => {
+                        li.remove();
+                    }, 400); 
+                }, 600);
+            });
+
+            // 리스트의 맨 위에 추가 (최신 항목 우선)
+            list.prepend(li);
+            
+            // 입력창 초기화 및 포커스
+            input.value = "";
+            input.focus();
+        }
+    </script>
+
+</body>
+</html>
