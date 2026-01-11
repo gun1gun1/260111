@@ -5,27 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 자세 교정 도우미</title>
     <style>
-        /* [디자인] 기본 스타일 설정 */
+        /* 디자인 스타일 */
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f0f2f5; /* 기본 배경색 */
+            background-color: #f0f2f5;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            transition: background-color 0.5s ease; /* 배경색 변경 시 부드럽게 전환 */
+            transition: background-color 0.5s ease;
             color: #333;
         }
-
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 20px;
-            color: #444;
-        }
-
-        /* 메인 컨텐츠 박스 (카드 스타일) */
+        h1 { font-size: 2rem; margin-bottom: 20px; color: #444; }
         .container {
             background: white;
             padding: 40px;
@@ -35,8 +28,6 @@
             width: 90%;
             max-width: 500px;
         }
-
-        /* 시작 버튼 스타일 */
         .start-btn {
             background-color: #007bff;
             color: white;
@@ -48,57 +39,20 @@
             transition: transform 0.2s, background-color 0.2s;
             font-weight: bold;
         }
-
-        .start-btn:hover {
-            background-color: #0056b3;
-            transform: scale(1.05);
-        }
-
-        /* 웹캠 영역 */
+        .start-btn:hover { background-color: #0056b3; transform: scale(1.05); }
         #webcam-container {
             margin-top: 20px;
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            display: none; /* 시작 전에는 숨김 */
+            display: none;
         }
-
-        canvas {
-            display: block; /* 캔버스 하단 공백 제거 */
-        }
-
-        /* 결과 라벨 영역 */
-        #label-container {
-            margin-top: 20px;
-            width: 100%;
-            text-align: left;
-        }
-
-        /* 개별 라벨 바 디자인 */
-        .label-wrapper {
-            margin-bottom: 10px;
-        }
-        
-        .label-text {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .progress-bg {
-            background-color: #e9ecef;
-            border-radius: 10px;
-            height: 15px;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.1s ease; /* 게이지 움직임 부드럽게 */
-        }
+        canvas { display: block; }
+        #label-container { margin-top: 20px; width: 100%; text-align: left; }
+        .label-wrapper { margin-bottom: 10px; }
+        .label-text { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 500; }
+        .progress-bg { background-color: #e9ecef; border-radius: 10px; height: 15px; width: 100%; overflow: hidden; }
+        .progress-bar { height: 100%; border-radius: 10px; transition: width 0.1s ease; }
     </style>
 </head>
 <body>
@@ -108,7 +62,6 @@
         <button class="start-btn" type="button" onclick="init()">카메라 켜기</button>
         
         <div id="webcam-container"></div>
-        
         <div id="label-container"></div>
     </div>
 
@@ -116,57 +69,68 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     
     <script type="text/javascript">
-        // [중요] Teachable Machine에서 설정한 클래스 이름과 정확히 일치해야 합니다.
-        // 만약 모델의 클래스 이름이 다르다면 이 부분을 수정해주세요.
-        const CLASS_NAME_GOOD = "바른자세";  
-        const CLASS_NAME_BAD = "안좋은자세"; // 혹은 "나쁜자세" 등 모델에 설정한 이름
+        // [설정] Teachable Machine의 클래스 이름과 똑같이 수정하세요!
+        const CLASS_NAME_GOOD = "바른자세";
+        const CLASS_NAME_BAD = "안좋은자세";
 
-        const URL = "./"; // 모델 파일 경로   
+        // [중요] 모델 파일 경로 설정 (같은 폴더에 있으므로 ./)
+        const URL = "./"; 
 
         let model, webcam, labelContainer, maxPredictions;
 
         async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
+            try {
+                // 1. 모델 불러오기 시도
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
 
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
+                // 모델 로딩 로그 출력 (F12 콘솔에서 확인 가능)
+                console.log("모델 로딩 시작...");
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                console.log("모델 로딩 성공!");
 
-            const flip = true; 
-            webcam = new tmImage.Webcam(300, 300, flip); // 화면 크기를 300x300으로 조금 키움
-            await webcam.setup();
-            await webcam.play();
-            window.requestAnimationFrame(loop);
-
-            // UI 업데이트: 버튼 숨기고 웹캠 보이기
-            document.querySelector('.start-btn').style.display = 'none';
-            document.getElementById("webcam-container").style.display = 'block';
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-            // 라벨 컨테이너 초기화 (게이지 바 형태 생성)
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) {
-                // HTML 구조를 JS로 생성
-                const wrapper = document.createElement("div");
-                wrapper.className = "label-wrapper";
+                // 2. 웹캠 설정 시도
+                const flip = true; 
+                webcam = new tmImage.Webcam(300, 300, flip);
                 
-                const textDiv = document.createElement("div");
-                textDiv.className = "label-text";
-                textDiv.innerHTML = `<span>Loading...</span> <span>0%</span>`;
-                
-                const progressBg = document.createElement("div");
-                progressBg.className = "progress-bg";
-                
-                const progressBar = document.createElement("div");
-                progressBar.className = "progress-bar";
-                progressBar.style.width = "0%";
-                // 클래스별 색상 다르게 (첫번째는 파랑, 두번째는 빨강 계열 등 임의 설정)
-                progressBar.style.backgroundColor = i === 0 ? "#4caf50" : "#ff5722"; 
+                await webcam.setup(); // 웹캠 권한 요청
+                await webcam.play();
+                window.requestAnimationFrame(loop);
 
-                progressBg.appendChild(progressBar);
-                wrapper.appendChild(textDiv);
-                wrapper.appendChild(progressBg);
-                labelContainer.appendChild(wrapper);
+                // 3. UI 변경 (버튼 숨기고 화면 보이기)
+                document.querySelector('.start-btn').style.display = 'none';
+                document.getElementById("webcam-container").style.display = 'block';
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+                // 4. 라벨 생성
+                labelContainer = document.getElementById("label-container");
+                for (let i = 0; i < maxPredictions; i++) {
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "label-wrapper";
+                    
+                    const textDiv = document.createElement("div");
+                    textDiv.className = "label-text";
+                    textDiv.innerHTML = `<span>Loading...</span> <span>0%</span>`;
+                    
+                    const progressBg = document.createElement("div");
+                    progressBg.className = "progress-bg";
+                    
+                    const progressBar = document.createElement("div");
+                    progressBar.className = "progress-bar";
+                    progressBar.style.width = "0%";
+                    progressBar.style.backgroundColor = i === 0 ? "#4caf50" : "#ff5722"; 
+
+                    progressBg.appendChild(progressBar);
+                    wrapper.appendChild(textDiv);
+                    wrapper.appendChild(progressBg);
+                    labelContainer.appendChild(wrapper);
+                }
+
+            } catch (error) {
+                // [에러 발생 시 경고창 띄우기]
+                alert("오류가 발생했습니다!\n\n1. 카메라 권한을 허용했는지 확인해주세요.\n2. 파일 이름이 정확한지 확인해주세요.\n\n에러 내용: " + error);
+                console.error(error);
             }
         }
 
@@ -179,11 +143,44 @@
         async function predict() {
             const prediction = await model.predict(webcam.canvas);
             
-            // [로직] 가장 높은 확률을 가진 클래스 찾기
             let maxProbability = 0;
             let currentClass = "";
 
             for (let i = 0; i < maxPredictions; i++) {
                 const className = prediction[i].className;
-                const probability = prediction
+                const probability = prediction[i].probability.toFixed(2);
+                const percentage = Math.round(probability * 100);
 
+                const wrapper = labelContainer.childNodes[i];
+                const textDiv = wrapper.querySelector(".label-text");
+                const progressBar = wrapper.querySelector(".progress-bar");
+
+                textDiv.innerHTML = `<span>${className}</span> <span>${percentage}%</span>`;
+                progressBar.style.width = percentage + "%";
+
+                if (parseFloat(probability) > maxProbability) {
+                    maxProbability = parseFloat(probability);
+                    currentClass = className;
+                }
+            }
+
+            handleBackgroundColor(currentClass, maxProbability);
+        }
+
+        function handleBackgroundColor(className, probability) {
+            const body = document.body;
+            if (probability > 0.5) {
+                if (className === CLASS_NAME_GOOD) {
+                    body.style.backgroundColor = "#d4edda"; // 초록
+                } else if (className === CLASS_NAME_BAD) {
+                    body.style.backgroundColor = "#f8d7da"; // 빨강
+                } else {
+                    body.style.backgroundColor = "#f0f2f5";
+                }
+            } else {
+                body.style.backgroundColor = "#f0f2f5";
+            }
+        }
+    </script>
+</body>
+</html>
