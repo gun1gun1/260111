@@ -121,7 +121,7 @@
         const CLASS_NAME_GOOD = "바른자세";  
         const CLASS_NAME_BAD = "안좋은자세"; // 혹은 "나쁜자세" 등 모델에 설정한 이름
 
-        const URL = "./my_model/"; // 모델 파일 경로
+        const URL = "./"; // 모델 파일 경로   
 
         let model, webcam, labelContainer, maxPredictions;
 
@@ -186,3 +186,4 @@
             for (let i = 0; i < maxPredictions; i++) {
                 const className = prediction[i].className;
                 const probability = prediction
+
