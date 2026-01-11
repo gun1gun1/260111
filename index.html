@@ -1,59 +1,188 @@
-<div>Teachable Machine Image Model</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-
-    // the link to your model provided by Teachable Machine export panel
-    const URL = "./my_model/";
-
-    let model, webcam, labelContainer, maxPredictions;
-
-    // Load the image model and setup the webcam
-    async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
-
-        // append elements to the DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 자세 교정 도우미</title>
+    <style>
+        /* [디자인] 기본 스타일 설정 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f2f5; /* 기본 배경색 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.5s ease; /* 배경색 변경 시 부드럽게 전환 */
+            color: #333;
         }
-    }
 
-    async function loop() {
-        webcam.update(); // update the webcam frame
-        await predict();
-        window.requestAnimationFrame(loop);
-    }
-
-    // run the webcam image through the image model
-    async function predict() {
-        // predict can take in an image, video or canvas html element
-        const prediction = await model.predict(webcam.canvas);
-        for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #444;
         }
-    }
-</script>
+
+        /* 메인 컨텐츠 박스 (카드 스타일) */
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        /* 시작 버튼 스타일 */
+        .start-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-weight: bold;
+        }
+
+        .start-btn:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* 웹캠 영역 */
+        #webcam-container {
+            margin-top: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: none; /* 시작 전에는 숨김 */
+        }
+
+        canvas {
+            display: block; /* 캔버스 하단 공백 제거 */
+        }
+
+        /* 결과 라벨 영역 */
+        #label-container {
+            margin-top: 20px;
+            width: 100%;
+            text-align: left;
+        }
+
+        /* 개별 라벨 바 디자인 */
+        .label-wrapper {
+            margin-bottom: 10px;
+        }
+        
+        .label-text {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .progress-bg {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            height: 15px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.1s ease; /* 게이지 움직임 부드럽게 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>바른 자세 지킴이</h1>
+        <button class="start-btn" type="button" onclick="init()">카메라 켜기</button>
+        
+        <div id="webcam-container"></div>
+        
+        <div id="label-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <script type="text/javascript">
+        // [중요] Teachable Machine에서 설정한 클래스 이름과 정확히 일치해야 합니다.
+        // 만약 모델의 클래스 이름이 다르다면 이 부분을 수정해주세요.
+        const CLASS_NAME_GOOD = "바른자세";  
+        const CLASS_NAME_BAD = "안좋은자세"; // 혹은 "나쁜자세" 등 모델에 설정한 이름
+
+        const URL = "./my_model/"; // 모델 파일 경로
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true; 
+            webcam = new tmImage.Webcam(300, 300, flip); // 화면 크기를 300x300으로 조금 키움
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // UI 업데이트: 버튼 숨기고 웹캠 보이기
+            document.querySelector('.start-btn').style.display = 'none';
+            document.getElementById("webcam-container").style.display = 'block';
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+            // 라벨 컨테이너 초기화 (게이지 바 형태 생성)
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                // HTML 구조를 JS로 생성
+                const wrapper = document.createElement("div");
+                wrapper.className = "label-wrapper";
+                
+                const textDiv = document.createElement("div");
+                textDiv.className = "label-text";
+                textDiv.innerHTML = `<span>Loading...</span> <span>0%</span>`;
+                
+                const progressBg = document.createElement("div");
+                progressBg.className = "progress-bg";
+                
+                const progressBar = document.createElement("div");
+                progressBar.className = "progress-bar";
+                progressBar.style.width = "0%";
+                // 클래스별 색상 다르게 (첫번째는 파랑, 두번째는 빨강 계열 등 임의 설정)
+                progressBar.style.backgroundColor = i === 0 ? "#4caf50" : "#ff5722"; 
+
+                progressBg.appendChild(progressBar);
+                wrapper.appendChild(textDiv);
+                wrapper.appendChild(progressBg);
+                labelContainer.appendChild(wrapper);
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            
+            // [로직] 가장 높은 확률을 가진 클래스 찾기
+            let maxProbability = 0;
+            let currentClass = "";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const probability = prediction
